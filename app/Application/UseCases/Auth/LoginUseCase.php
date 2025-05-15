@@ -2,16 +2,15 @@
 
 namespace App\Application\UseCases\Auth;
 
-use App\Application\DTOs\LoginUserDTO;
-use App\Domain\Entities\UserEntity;
+use App\Application\DTOs\Auth\LoginUserDTO;
 use App\Domain\Exceptions\NotFoundException;
 use App\Domain\Exceptions\UnauthorizedException;
 use App\Domain\Interfaces\Repositories\UserRepository;
 use App\Domain\Interfaces\Services\HashService;
 use App\Domain\Interfaces\Services\TokenService;
 use App\Domain\ValueObjects\Email;
-
-use Illuminate\Support\Facades\Log;
+use App\Domain\ValueObjects\Password;
+use App\Domain\ValueObjects\PasswordHashed;
 
 /***
  * LoginUseCase Class
@@ -22,9 +21,9 @@ use Illuminate\Support\Facades\Log;
  */
 class LoginUseCase
 {
-    private UserRepository $userRepository;
-    private HashService $passwordHasher;
-    private TokenService $tokenService;
+    private readonly UserRepository $userRepository;
+    private readonly HashService $passwordHasher;
+    private readonly TokenService $tokenService;
 
     /**
      * Constructor
@@ -39,25 +38,28 @@ class LoginUseCase
         $this->passwordHasher = $passwordHasher;
         $this->tokenService = $tokenService;
     }
+
     /**
-     * Execute the login use case
+     * Execute the login use case.
      *
      * @param LoginUserDTO $dto
-     * @return string JWT token
-     * @throws NotFoundException if user is not found
-     * @throws UnauthorizedException if credentials are invalid
+     * @return string The generated JWT token.
+     * @throws NotFoundException If the user is not found.
+     * @throws UnauthorizedException If the credentials are invalid.
      */
     public function execute(LoginUserDTO $dto): string
     {
         $email = new Email($dto->email);
         $user = $this->userRepository->findByEmail($email);
-        if (!$user) {
-            throw new NotFoundException("User not found");
-        }
-        $passwordVerification = $this->passwordHasher->verify($dto->password, $user->getPassword());
-        if (!$passwordVerification) {
-            throw new UnauthorizedException("Invalid credentials");
-        }
+
+        if (!$user) throw new NotFoundException("User not found");
+
+        $password = new Password($dto->password);
+        $passwordHashed = new PasswordHashed($user->getPassword()->value());
+        $passwordVerification = $this->passwordHasher->verify($password, $passwordHashed);
+
+        if (!$passwordVerification) throw new UnauthorizedException("Invalid credentials");
+
         $token = $this->tokenService->generate(['id' => $user->getId()]);
         return $token;
     }

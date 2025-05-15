@@ -2,76 +2,112 @@
 
 namespace App\Infrastructure\Repositories;
 
+use App\Application\DTOs\Auth\UserBasicInfoDTO;
+use App\Infrastructure\Mappers\UserMapper;
 use App\Domain\Entities\UserEntity;
 use App\Domain\Interfaces\Repositories\UserRepository;
-use App\Models\User; // Assuming you have a User model in your application
+use App\Domain\Interfaces\Services\Logger;
 use App\Domain\ValueObjects\Email;
+use App\Domain\ValueObjects\Uuid;
+use App\Models\User;
+use Throwable;
 
 /**
- * Class EloquentUserRepository
- * @package App\Infrastructure\Repositories
+ * EloquentUserRepository Class
+ *
  * This class implements the UserRepository interface using Eloquent ORM.
+ * It provides methods for creating and retrieving user entities.
  */
 class EloquentUserRepository implements UserRepository
 {
-    protected $model;
+    private readonly User $model;
+    private readonly UserMapper $userMapper;
+    private readonly Logger $logger;
     /**
-     * EloquentUserRepository constructor.
-     * @param User $model
-     */
-    public function __construct()
-    {
-        $this->model = new User();
-    }
-    /**
-     * Create a new user.
+     * Constructor for EloquentUserRepository
      *
-     * @param UserEntity $user
-     * @return UserEntity
+     * @param User $model The Eloquent User model instance.
+     * @param UserMapper $userMapper The user mapper instance.
+     * @param Logger $logger The logger service.
      */
-    public function create(UserEntity $user): UserEntity
+    public function __construct(User $model, UserMapper $userMapper, Logger $logger)
     {
-        $userModel = $this->model->create([
-            'name' => $user->getName(),
-            'email' => $user->getEmail(),
-            'password' => $user->getPassword(),
-        ]);
+        $this->model = $model;
+        $this->userMapper = $userMapper;
+        $this->logger = $logger;
+    }
 
-        return new UserEntity(
-            $userModel->name,
-            new Email($userModel->email),
-            $userModel->password,
-            $userModel->id
-        );
-    }
     /**
-     * Update an existing user.
+     * Create a new user entity.
      *
-     * @param UserEntity $user
-     * @return UserEntity
+     * @param UserEntity $user The user entity to create.
+     * @return UserBasicInfoDTO|null The created user entity.
      */
-    public function findByEmail(string $email): ?UserEntity
+    public function create(UserEntity $user): ?UserBasicInfoDTO
     {
-        $user = $this->model->where('email', $email)->first();
-        if (!$user) {
+        try {
+            $userCreated = $this->model->create([
+                'first_name' => $user->getFirstName(),
+                'last_name' => $user->getLastName(),
+                'email' => $user->getEmail()->value(),
+                'phone' => $user->getPhone()->value(),
+                'password' => $user->getPassword()->value(),
+                'role' => $user->getRole()->value(),
+                'active' => $user->isActive(),
+            ])->fresh();
+
+            $this->logger->info('User created', ['user' => $userCreated->toArray()]);
+
+            if (!$userCreated) return null;
+
+            return $this->userMapper->toUserBasicInfoDTO($userCreated);
+        } catch (Throwable  $e) {
+            $this->logger->error('Error creating user', ['exception' => $e->getMessage()]);
             return null;
         }
-        $userEntity = new UserEntity($user->name, new Email($user->email), $user->password, $user->id);
-        return $userEntity;
     }
+
     /**
-     * Find a user by ID.
+     * Find a user entity by email.
      *
-     * @param int $id
-     * @return UserEntity|null
+     * @param Email $email The email of the user to find.
+     * @return UserEntity|null The found user entity or null if not found.
      */
-    public function findById(int $id): ?UserEntity
+    public function findByEmail(Email $email): ?UserEntity
     {
-        $user = $this->model->where('id', $id)->first();
-        if (!$user) {
+        try {
+            $findUser = $this->model->where('email', $email->value())->first();
+            
+            if (!$findUser) return null;
+            
+            $user = $this->userMapper->toEntity($findUser);
+
+            return $user;
+        } catch (Throwable  $e) {
+            $this->logger->error('Error finding user by email', ['exception' => $e->getMessage()]);
             return null;
         }
-        $userEntity = new UserEntity($user->name, new Email($user->email), $user->password, $user->id);
-        return $userEntity;
+    }
+
+    /**
+     * Find a user entity by ID.
+     *
+     * @param Uuid $id The ID of the user to find.
+     * @return UserEntity|null The found user entity or null if not found.
+     */
+    public function findById(Uuid $id): ?UserEntity
+    {
+        try {
+            $findUser = $this->model->where('id', $id)->first();
+
+            if (!$findUser) return null;
+
+            $user = $this->userMapper->toEntity($findUser);            
+
+            return $user;
+        } catch (Throwable  $e) {
+            $this->logger->error('Error finding user by id', ['exception' => $e->getMessage()]);
+            return null;
+        }
     }
 }

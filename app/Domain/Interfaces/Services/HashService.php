@@ -2,6 +2,9 @@
 
 namespace App\Domain\Interfaces\Services;
 
+use App\Domain\ValueObjects\Password;
+use App\Domain\ValueObjects\PasswordHashed;
+
 /**
  * Interface HashService
  * @package App\Domain\Interfaces\Services
@@ -15,7 +18,7 @@ interface HashService
      * @param string $password The password to hash.
      * @return string The hashed password.
      */
-    public function hash(string $password): string;
+    public function hash(Password $password): string;
     /**
      * Verify a password against a hashed password.
      *
@@ -23,5 +26,5 @@ interface HashService
      * @param string $hashedPassword The hashed password to compare against.
      * @return bool True if the password matches, false otherwise.
      */
-    public function verify(string $password, string $hashedPassword): bool;
+    public function verify(Password $password, PasswordHashed $hashedPassword): bool;
 }

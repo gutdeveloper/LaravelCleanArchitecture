@@ -2,7 +2,10 @@
 
 namespace App\Domain\Interfaces\Repositories;
 
+use App\Application\DTOs\Auth\UserBasicInfoDTO;
 use App\Domain\Entities\UserEntity;
+use App\Domain\ValueObjects\Email;
+use App\Domain\ValueObjects\Uuid;
 
 /**
  * UserRepository Interface
@@ -16,21 +19,23 @@ interface UserRepository
      * Create a new user entity.
      *
      * @param UserEntity $user The user entity to create.
-     * @return UserEntity The created user entity.
+     * @return UserBasicInfoDTO The created user.
      */
-    public function create(UserEntity $user): UserEntity;
+    public function create(UserEntity $user): ?UserBasicInfoDTO;
+
     /**
      * Find a user entity by email.
      *
      * @param string $email The email of the user to find.
      * @return UserEntity|null The found user entity or null if not found.
      */
-    public function findByEmail(string $email): ?UserEntity;
+    public function findByEmail(Email $email): ?UserEntity;
+    
     /**
      * Find a user entity by ID.
      *
-     * @param int $id The ID of the user to find.
+     * @param Uuid $id The ID of the user to find.
      * @return UserEntity|null The found user entity or null if not found.
      */
-    public function findById(int $id): ?UserEntity;
+    public function findById(Uuid $id): ?UserEntity;
 }

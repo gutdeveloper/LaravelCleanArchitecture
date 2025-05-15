@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:latest # Usa la última versión de PostgreSQL
+    container_name: postgres_container
+    restart: always
+    ports:
+      - "5432:5432" # Mapea el puerto 5432 del contenedor al puerto 5432 de tu máquina
+    environment:
+      POSTGRES_USER: laravel_user # Usuario de PostgreSQL
+      POSTGRES_PASSWORD: laravel_password # Contraseña de PostgreSQL
+      POSTGRES_DB: laravel_db # Base de datos predeterminada
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persistencia de datos
+
+volumes:
+  postgres_data:

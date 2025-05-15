@@ -2,27 +2,43 @@
 
 namespace App\Domain\ValueObjects;
 
-use InvalidArgumentException;
+use App\Domain\Exceptions\BadRequestException;
 
 /**
  * Class Email
  * @package App\Domain\ValueObjects
  * This class represents an email value object.
- * It validates the email format and ensures it is not longer than 50 characters.
+ * It validates the email format with robust rules including domain validation.
  */
 final class Email
 {
     private string $value;
-    
+
     public function __construct(string $value)
     {
+        $value = strtolower(trim($value));
+        if (empty($value)) {
+            throw new BadRequestException("Email cannot be empty");
+        }
         if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
-            throw new InvalidArgumentException("Invalid email format");
+            throw new BadRequestException("Invalid email format");
         }
+
         if (strlen($value) > 50) {
-            throw new InvalidArgumentException("Email cannot be longer than 30 characters");
+            throw new BadRequestException("Email cannot be longer than 50 characters");
         }
-        $this->value = strtolower($value);
+        if (strlen($value) < 5) {
+            throw new BadRequestException("Email cannot be shorter than 5 characters");
+        }
+        
+
+        $domain = substr(strrchr($value, "@"), 1);
+        if (!$domain || !checkdnsrr($domain, 'MX')) {
+            throw new BadRequestException("Invalid email domain or domain does not exist");
+        }
+
+
+        $this->value = $value;
     }
 
     public function __toString(): string
@@ -30,8 +46,8 @@ final class Email
         return $this->value;
     }
 
-    // public function value(): string
-    // {
-    //     return $this->value;
-    // }
+    public function value(): string
+    {
+        return $this->value;
+    }
 }

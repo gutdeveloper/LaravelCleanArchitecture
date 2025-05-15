@@ -1,6 +1,10 @@
 <?php
 
-namespace App\Application\DTOs;
+namespace App\Application\DTOs\Auth;
+
+use App\Domain\ValueObjects\Email;
+use App\Domain\ValueObjects\Password;
+
 /**
  * Data Transfer Object for Login User
  *
@@ -12,8 +16,8 @@ class LoginUserDTO
     /**
      * Constructor for LoginUserDTO
      *
-     * @param string $email The email of the user.
-     * @param string $password The password of the user.
+     * @param Email $email The email of the user.
+     * @param Password $password The password of the user.
      */
     public function __construct(
         public readonly string $email,

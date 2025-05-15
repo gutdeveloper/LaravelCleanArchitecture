@@ -2,13 +2,18 @@
 
 namespace App\Application\UseCases\Auth;
 
-use App\Application\DTOs\RegisterUserDTO;
+use App\Application\DTOs\Auth\RegisterUserDTO;
+use App\Application\DTOs\Auth\UserBasicInfoDTO;
 use App\Domain\Entities\UserEntity;
 use App\Domain\Exceptions\ConflictException;
 use App\Domain\Exceptions\InternalServerException;
 use App\Domain\Interfaces\Repositories\UserRepository;
 use App\Domain\Interfaces\Services\HashService;
 use App\Domain\ValueObjects\Email;
+use App\Domain\ValueObjects\Password;
+use App\Domain\ValueObjects\PasswordHashed;
+use App\Domain\ValueObjects\Phone;
+use App\Infrastructure\Mappers\UserMapper;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -21,10 +26,8 @@ use Illuminate\Support\Facades\Log;
  */
 class RegisterUseCase
 {
-
-    private UserRepository $userRepository;
-    private HashService $passwordHasher;
-
+    private readonly UserRepository $userRepository;
+    private readonly HashService $passwordHasher;
     /**
      * Constructor for RegisterUseCase
      *
@@ -44,19 +47,28 @@ class RegisterUseCase
      * @throws ConflictException If the user already exists.
      * @throws InternalServerException If user registration fails.
      */
-    public function execute(RegisterUserDTO $dto): int
+    public function execute(RegisterUserDTO $dto): UserBasicInfoDTO
     {
         $email = new Email($dto->email);
-        $user = $this->userRepository->findByEmail($email);
-        if ($user) {
-            throw new ConflictException("User already exists");
-        }
-        $hashedPassword = $this->passwordHasher->hash($dto->password);
-        $user = new UserEntity($dto->name, $email, $hashedPassword);
-        $user = $this->userRepository->create($user);
-        if (!$user) {
-            throw new InternalServerException("User registration failed");
-        }
-        return $user->getId();
+        $existingUser = $this->userRepository->findByEmail($email);
+
+        if ($existingUser) throw new ConflictException("User already exists");
+
+        $password = new Password($dto->password);
+        $hashedPassword = $this->passwordHasher->hash($password);
+
+        $user = new UserEntity(
+            $dto->first_name,
+            $dto->last_name,
+            new Phone($dto->phone),
+            $email,
+            new PasswordHashed($hashedPassword),
+        );
+
+        $userCreated = $this->userRepository->create($user);
+
+        if (!$userCreated) throw new InternalServerException("User registration failed");
+
+        return $userCreated;
     }
 }
